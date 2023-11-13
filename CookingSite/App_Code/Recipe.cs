@@ -102,6 +102,10 @@ namespace CookingSite.App_Code
             return string.Join(" ", pairlist);
         }
 
+        /// <summary>
+        /// Checks recipe where ingredients in a pair are closer to each other than to other ingredients of recipe
+        /// </summary>
+        /// <returns></returns>
         public bool isValid()
         {
             if (ingredients.Distinct().Count() != pairs.Count * 2)
@@ -128,6 +132,12 @@ namespace CookingSite.App_Code
             return true;
         }
 
+        /// <summary>
+        /// Verify desired stats are positive, or greater than 0 if also require boosted attributes
+        /// </summary>
+        /// <param name="stats">Desired Stats 0 or greater</param>
+        /// <param name="boosted">Desired Stats should be greater than 0</param>
+        /// <returns></returns>
         public bool isPositive(bool[] stats, bool boosted)
         {
             bool ret = true;
@@ -160,6 +170,10 @@ namespace CookingSite.App_Code
             return ret;
         }
 
+        /// <summary>
+        /// Recipe must have all unique ingredients, no replication
+        /// </summary>
+        /// <returns></returns>
         public bool isUnique()
         {
             bool ret = true;
@@ -178,6 +192,12 @@ namespace CookingSite.App_Code
             return ret;
         }
 
+        /// <summary>
+        /// Calculate overall stats and duration for entire recipe.
+        /// Square root of sum of squares, retaining signs.
+        /// </summary>
+        /// <param name="ratio">The base:additive rato to use in calculations. 6:1, 13:1, 4:3</param>
+        /// <returns></returns>
         public float[] Attributes(int ratio)
         {
             float[] att = new float[8];
@@ -195,6 +215,11 @@ namespace CookingSite.App_Code
             return att;
         }
 
+        /// <summary>
+        /// Calculates the cost of the recipe
+        /// </summary>
+        /// <param name="ratio">The base:additive rato to use in calculations. 6:1, 13:1, 4:3</param>
+        /// <returns></returns>
         public int Cost(int ratio)
         {
             int cost = 0;
