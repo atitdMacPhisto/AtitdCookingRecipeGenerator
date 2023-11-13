@@ -220,7 +220,7 @@ namespace CookingSite
             foreach (Recipe r in masterRecipeList)
             {
                 DataRow row = dt.NewRow();
-                row["recipe"] = r.ToString();
+                row["recipe"] = r.ToWikiString(cboRatio.Text);
                 float[] results = r.Attributes(ratio);
                 for (int j = 0; j < 8; j++)
                     row[j + 2] = (int)results[j];

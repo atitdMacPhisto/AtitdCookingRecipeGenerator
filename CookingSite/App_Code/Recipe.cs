@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text;
 using System.Web;
 
 namespace CookingSite.App_Code
@@ -86,6 +87,19 @@ namespace CookingSite.App_Code
         public override string ToString()
         {
             return string.Join(",", pairs.Keys);
+        }
+
+        public string ToWikiString(string ratio)
+        {
+            string[] ratioParts = ratio.Split(':');
+            int baseQty = int.Parse(ratioParts[0]);
+            int addQty = int.Parse(ratioParts[1]);
+            List<string> pairlist  = new List<string>();
+            foreach (Pair p in pairs.Values)
+            {
+                pairlist.Add($"{baseQty} {p.Base.Name}. {addQty} {p.Additive.Name}.");
+            }
+            return string.Join(" ", pairlist);
         }
 
         public bool isValid()

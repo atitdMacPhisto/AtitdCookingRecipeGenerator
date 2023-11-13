@@ -7,19 +7,20 @@ using System.Runtime;
 using System.Web;
 using System.Configuration;
 using System.Xml.Linq;
+using System.Web.SessionState;
 
 namespace CookingSite
 {
     public class db
     {
-        static SqlConnection conn = null;
+        //static SqlConnection conn = null;
 
-        static db()
-        {
-            ConnectionStringSettings settings = ConfigurationManager.ConnectionStrings["dbcon"];
-            conn = new SqlConnection(settings.ConnectionString);
-            conn.Open();
-        }
+        //static db()
+        //{
+        //    ConnectionStringSettings settings = ConfigurationManager.ConnectionStrings["dbcon"];
+        //    conn = new SqlConnection(settings.ConnectionString);
+        //    conn.Open();
+        //}
 
         public static List<string> GetStringList(string query, Dictionary<string, object> parameters = null, bool storedProcedure = false)
         {
@@ -40,6 +41,19 @@ namespace CookingSite
 
         public static SqlCommand CreateCommand(string query, Dictionary<string, object> parameters = null, bool storedProcedure = false)
         {
+            SqlConnection conn = null;
+            HttpContext context = HttpContext.Current;
+            HttpSessionState session = context.Session;
+            if (session["dbconn"] != null)
+                conn = session["dbconn"] as SqlConnection;
+            else
+            {
+                ConnectionStringSettings settings = ConfigurationManager.ConnectionStrings["dbcon"];
+                conn = new SqlConnection(settings.ConnectionString);
+                conn.Open();
+                session["dbconn"] = conn;
+            }
+
             SqlCommand cmd = new SqlCommand(query, conn);
             if (storedProcedure)
                 cmd.CommandType = CommandType.StoredProcedure;
