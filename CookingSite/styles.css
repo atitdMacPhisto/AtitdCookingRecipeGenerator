@@ -1,0 +1,11 @@
+﻿body {
+}
+
+#tblRecipes {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+.centered {
+    text-align: center;
+}
