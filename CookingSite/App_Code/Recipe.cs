@@ -48,7 +48,7 @@ namespace CookingSite.App_Code
             pairs.Add(pair.Key, pair);
             ingredients.Add(pair.Base.Name);
             ingredients.Add(pair.Additive.Name);
-            sortedAttr += Util.SSqr(pair.Attribute(sortAttr));
+            sortedAttr += CalcSortVal(pair, sortAttr);
         }
 
         public bool Add(string p, int sortAttr)
@@ -65,8 +65,19 @@ namespace CookingSite.App_Code
             pairs.Add(pair.Key, pair);
             ingredients.Add(pair.Base.Name);
             ingredients.Add(pair.Additive.Name);
-            sortedAttr = Util.SSqr(pair.Attribute(sortAttr));
+            sortedAttr = CalcSortVal(pair, sortAttr);
             return true;
+        }
+
+        private float CalcSortVal(Pair pair, int sortAttr)
+        {
+            switch (sortAttr)
+            {
+                case 7:
+                    return Util.SSqr((pair.Attribute(0) + pair.Attribute(1))/2);
+                default:
+                    return Util.SSqr(pair.Attribute(sortAttr));
+            }
         }
 
         public float Attribute(int index)

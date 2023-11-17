@@ -21,7 +21,7 @@
                             <td rowspan="2">&nbsp;&nbsp;</td>
                             <td rowspan="2">
                                 Sort&nbsp;
-                                <asp:DropDownList ID="cboSort" runat="server" Width="80" AutoPostBack="true" OnSelectedIndexChanged="cboSort_SelectedIndexChanged">
+                                <asp:DropDownList ID="cboSort" runat="server" Width="120" AutoPostBack="true" OnSelectedIndexChanged="cboSort_SelectedIndexChanged">
                                     <asp:ListItem>STR</asp:ListItem>
                                     <asp:ListItem>DEX</asp:ListItem>
                                     <asp:ListItem>END</asp:ListItem>
@@ -29,6 +29,7 @@
                                     <asp:ListItem>CON</asp:ListItem>
                                     <asp:ListItem>FOC</asp:ListItem>
                                     <asp:ListItem>PER</asp:ListItem>
+                                    <asp:ListItem>STR/DEX</asp:ListItem>
                                 </asp:DropDownList>
                             </td>
                             <td>&nbsp;&nbsp;</td>

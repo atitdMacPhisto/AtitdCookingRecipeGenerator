@@ -63,7 +63,21 @@ namespace CookingSite
         {
             string[] filterNames = new string[] { "Strength", "Dexterity", "Endurance", "Speed", "Constitution", "Focus", "Perception" };
             List<string> colList = new List<string>();
-            string sortBy = filterNames[sortby];
+            //string sortBy = filterNames[sortby];
+
+            string filter1 = "";
+            string sortBy1 = "";
+            switch (sortby)
+            {
+                case 7:
+                    filter1 = $"Strength >= 0 AND Dexterity >= 0";
+                    sortBy1 = $"Strength DESC, Dexterity DESC";
+                    break;
+                default:
+                    filter1 = $"{filterNames[sortby]} >= 0";
+                    sortBy1 = $"{filterNames[sortby]} DESC";
+                    break;
+            }
 
             string qry = string.Empty;
             int minBase = 0;
@@ -85,7 +99,7 @@ namespace CookingSite
                     break;
             }
 
-            List<string> t1 = db.GetStringList($"SELECT TOP 50 Base + '|' + Additive FROM Pairs P LEFT OUTER JOIN StockView v1 ON v1.IngredientName=P.Base LEFT OUTER JOIN StockView v2 ON v2.IngredientName=P.Additive WHERE " + (invLimited ? $" v1.Quantity >= {minBase} AND v2.Quantity >= {minAdd}" : "1=1") + $" AND v1.GenDisable=0 AND v2.GenDisable=0 and {sortBy} >= 0 ORDER BY {sortBy} DESC");
+            List<string> t1 = db.GetStringList($"SELECT TOP 50 Base + '|' + Additive FROM Pairs P LEFT OUTER JOIN StockView v1 ON v1.IngredientName=P.Base LEFT OUTER JOIN StockView v2 ON v2.IngredientName=P.Additive WHERE " + (invLimited ? $" v1.Quantity >= {minBase} AND v2.Quantity >= {minAdd}" : "1=1") + $" AND v1.GenDisable=0 AND v2.GenDisable=0 and {filter1} ORDER BY {sortBy1}");
             if (t1 == null)
             {
                 gvRecipes.Visible = false;
@@ -239,8 +253,18 @@ namespace CookingSite
             if (dt.Rows.Count > 0)
             {
                 Session["RecipeTable"] = dt;
+
                 string sortExpression = cboSort.Text;
-                dt.DefaultView.Sort = sortExpression + " DESC";
+                switch (cboSort.SelectedIndex)
+                {
+                    case 7:
+                        sortExpression = $"STR DESC, DEX DESC";
+                        break;
+                    default:
+                        sortExpression = $"{cboSort.Text} DESC";
+                        break;
+                }
+                dt.DefaultView.Sort = sortExpression;
                 gvRecipes.DataSource = Session["RecipeTable"];
                 gvRecipes.DataBind();
 
@@ -256,7 +280,7 @@ namespace CookingSite
                 {
                     App_Code.Pair p = Recipe.pairCache[s];
                     TimeSpan elapsed = DateTime.Now - p.LastUpdated;
-                    if (elapsed > new TimeSpan(2, 0, 0, 0))
+                    if (elapsed > new TimeSpan(5, 0, 0, 0))
                     {
                         DataRow row = dup.NewRow();
                         row["Pair"] = s;
@@ -284,8 +308,17 @@ namespace CookingSite
                 return;
 
             string sortExpression = cboSort.Text;
+            switch (cboSort.SelectedIndex)
+            {
+                case 7:
+                    sortExpression = $"STR DESC, DEX DESC";
+                    break;
+                default:
+                    sortExpression = $"{cboSort.Text} DESC";
+                    break;
+            }
             DataTable dt = Session["RecipeTable"] as DataTable;
-            dt.DefaultView.Sort = sortExpression + " " + GetSortDirection(sortExpression);
+            dt.DefaultView.Sort = sortExpression;
 
             gvRecipes.DataSource = Session["RecipeTable"];
             gvRecipes.DataBind();
@@ -322,10 +355,10 @@ namespace CookingSite
                 if (sortExpression == column)
                 {
                     string lastDirection = ViewState["SortDirection"] as string;
-                    if ((lastDirection != null) && (lastDirection == "DESC"))
-                    {
+                    if (lastDirection == "DESC")
                         sortDirection = "ASC";
-                    }
+                    else
+                        sortDirection = "DESC";
                 }
             }
 
