@@ -332,11 +332,19 @@ namespace CookingSite
             {
                 //Sort the data.
                 dt.DefaultView.Sort = e.SortExpression + " " + GetSortDirection(e.SortExpression);
-                gvRecipes.DataSource = Session["RecipeTable"];
+                gvRecipes.DataSource = dt;
                 gvRecipes.DataBind();
             }
             else
                 Response.Redirect("~/");
+
+            DataTable dt2 = Session["UpdatePairs"] as DataTable;
+            if (dt2 != null && dt2.Rows.Count > 0)
+            {
+                //Sort the data.
+                gvUpdatePairs.DataSource = dt2;
+                gvUpdatePairs.DataBind();
+            }
         }
 
         private string GetSortDirection(string column)
@@ -346,7 +354,7 @@ namespace CookingSite
             string sortDirection = "ASC";
 
             // Retrieve the last column that was sorted.
-            string sortExpression = ViewState["SortExpression"] as string;
+            string sortExpression = Session["SortExpression"] as string;
 
             if (sortExpression != null)
             {
@@ -354,7 +362,7 @@ namespace CookingSite
                 // Otherwise, the default value can be returned.
                 if (sortExpression == column)
                 {
-                    string lastDirection = ViewState["SortDirection"] as string;
+                    string lastDirection = Session["SortDirection"] as string;
                     if (lastDirection == "DESC")
                         sortDirection = "ASC";
                     else
@@ -363,24 +371,31 @@ namespace CookingSite
             }
 
             // Save new values in ViewState.
-            ViewState["SortDirection"] = sortDirection;
-            ViewState["SortExpression"] = column;
+            Session["SortDirection"] = sortDirection;
+            Session["SortExpression"] = column;
 
             return sortDirection;
         }
 
         protected void gvUpdatePairs_Sorting(object sender, GridViewSortEventArgs e)
         {
-            DataTable dt = Session["UpdatePairs"] as DataTable;
+            DataTable dt = Session["RecipeTable"] as DataTable;
             if (dt != null && dt.Rows.Count > 0)
             {
-                //Sort the data.
-                dt.DefaultView.Sort = e.SortExpression + " " + GetSortDirection(e.SortExpression);
-                gvRecipes.DataSource = Session["UpdatePairs"];
+                gvRecipes.DataSource = dt;
                 gvRecipes.DataBind();
             }
             else
                 Response.Redirect("~/");
+
+            DataTable dt2 = Session["UpdatePairs"] as DataTable;
+            if (dt2 != null && dt2.Rows.Count > 0)
+            {
+                //Sort the data.
+                dt2.DefaultView.Sort = e.SortExpression + " " + GetSortDirection(e.SortExpression);
+                gvUpdatePairs.DataSource = dt2;
+                gvUpdatePairs.DataBind();
+            }
         }
     }
 
