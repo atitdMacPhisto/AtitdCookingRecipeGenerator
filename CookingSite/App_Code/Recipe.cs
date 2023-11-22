@@ -7,6 +7,8 @@ namespace CookingSite.App_Code
 {
     public class Recipe
     {
+        public static PairData[] pdc;
+
         public List<int> PairID = new List<int>();
         public float[] Attributes = new float[8];
         public float SortVal = 0.0f;
@@ -27,7 +29,7 @@ namespace CookingSite.App_Code
             return true;
         }
 
-        public bool isValid(PairData[] pdc)
+        public bool isValid()
         {
             if (PairID.Count == 1)
                 return true;
@@ -53,7 +55,7 @@ namespace CookingSite.App_Code
             return true;
         }
 
-        public bool isUnique(PairData[] pdc)
+        public bool isUnique()
         {
             if (PairID.Count == 1)
                 return true;
@@ -68,7 +70,7 @@ namespace CookingSite.App_Code
             return ids.Count == ids.Distinct().Count();
         }
 
-        public void Prep(PairData[] pdc, int ratio)
+        public void Prep(int ratio, int mult)
         {
             int b = 0;
             int a = 0;
@@ -77,16 +79,16 @@ namespace CookingSite.App_Code
             switch (ratio)
             {
                 case 0:
-                    b = 6;
-                    a = 1;
+                    b = 6 * mult;
+                    a = mult;
                     break;
                 case 1:
-                    b = 13;
-                    a = 1;
+                    b = 13 * mult;
+                    a = mult;
                     break;
                 case 2:
-                    b = 4;
-                    a = 3;
+                    b = 4 * mult;
+                    a = 3 * mult;
                     break;
             }
 
@@ -101,6 +103,45 @@ namespace CookingSite.App_Code
             }
 
             recipe = string.Join(" ", ingredients);
+        }
+
+        public void CalcStats(int sortby)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                float f = 0.0f;
+                foreach (int p in PairID)
+                {
+
+                    f += Util.SSqr(pdc[p].Attributes[i]);
+                }
+                Attributes[i] = Util.SSqrt(f);
+            }
+            SortVal = 0.0f;
+            foreach (int p in PairID)
+            {
+                switch (sortby)
+                {
+                    case 7:
+                        SortVal = Util.SSqr(pdc[p].Attributes[0] + pdc[p].Attributes[1]);
+                        break;
+                    default:
+                        SortVal += Util.SSqr(pdc[p].Attributes[sortby]);
+                        break;
+                }
+            }
+            SortVal = Util.SSqrt(SortVal);
+        }
+
+        public bool Validate(int sortby, bool[] filters, bool boosted)
+        {
+            CalcStats(sortby);
+
+            if (!isPositive(filters, boosted))
+                return false;
+            if (!isUnique())
+                return false;
+            return isValid();
         }
 
         public override string ToString()

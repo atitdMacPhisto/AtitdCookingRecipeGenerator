@@ -52,10 +52,10 @@ namespace CookingSite
             }
             else
             {
-                txtServings.Text = "1";
+                txtServings.Text = "10";
                 cboSort.SelectedIndex = 0;
                 cboRatio.SelectedIndex = 0;
-                cboCooklevel.SelectedIndex = 0;
+                cboCooklevel.SelectedIndex = 4;
                 gvRecipes.Visible = false;
                 lblNoRecipes.Visible = false;
             }
@@ -114,8 +114,8 @@ namespace CookingSite
                 return;
             }
 
-            PairData[] pairDatas = new PairData[t1.Count];
-            int[] inputSet = new int[pairDatas.Length];
+            Recipe.pdc = new PairData[t1.Count];
+            int[] inputSet = new int[t1.Count];
             for (int i = 0; i < t1.Count; i++)
             {
                 string key = t1[i];
@@ -124,7 +124,7 @@ namespace CookingSite
                     pairCache.Add(key, App_Code.Pair.FetchPair(key));
                 }
 
-                pairDatas[i] = new PairData(pairCache[key], ratio);
+                Recipe.pdc[i] = new PairData(pairCache[key], ratio);
                 inputSet[i] = i;
             }
 
@@ -133,7 +133,7 @@ namespace CookingSite
             for (int i = 0; i < level + 1; i++)
             {
                 Combinations<int> combos = new Combinations<int>(inputSet, i + 1);
-                Parallel.ForEach(combos, c => ValidateRecipe(candidates, pairDatas, sortby, statFilters, boosted, c));
+                Parallel.ForEach(combos, c => ValidateRecipe(candidates, sortby, statFilters, boosted, c));
             }
             List<Recipe> cand = new List<Recipe>(candidates);
             cand.Sort((a, b) => a.SortVal.CompareTo(b.SortVal));
@@ -157,7 +157,7 @@ namespace CookingSite
 
             foreach (Recipe r in cand)
             {
-                r.Prep(pairDatas, ratio);
+                r.Prep(ratio, servings);
                 DataRow row = dt.NewRow();
 
                 row["recipe"] = r.ToString();
@@ -171,7 +171,7 @@ namespace CookingSite
 
                 foreach (int pi in r.PairID)
                 {
-                    PairData pdc = pairDatas[pi];
+                    PairData pdc = Recipe.pdc[pi];
                     if (!UpdatePairs.Contains(pdc.pair.Key))
                         UpdatePairs.Add(pdc.pair.Key);
                 }
@@ -325,49 +325,16 @@ namespace CookingSite
             }
         }
 
-        private void ValidateRecipe(ConcurrentBag<Recipe> candidates, PairData[] pairDatas, int sortby, bool[] attrFilters, bool boosted, IList<int> c)
+        private void ValidateRecipe(ConcurrentBag<Recipe> candidates, int sortby, bool[] attrFilters, bool boosted, IList<int> c)
         {
             Recipe rdc = new Recipe();
             for (int j = 0; j < c.Count; j++)
                 rdc.PairID.Add(c[j]);
-            CalcStats(rdc, pairDatas, sortby);
 
-            if (!rdc.isPositive(attrFilters, boosted))
-                return;
-            if (!rdc.isUnique(pairDatas))
-                return;
-            if (!rdc.isValid(pairDatas))
+            if (!rdc.Validate(sortby, attrFilters, boosted))
                 return;
 
             candidates.Add(rdc);
-        }
-
-        private void CalcStats(Recipe rdc, PairData[] pdc, int sortby)
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                float f = 0.0f;
-                foreach (int p in rdc.PairID)
-                {
-
-                    f += Util.SSqr(pdc[p].Attributes[i]);
-                }
-                rdc.Attributes[i] = Util.SSqrt(f);
-            }
-            rdc.SortVal = 0.0f;
-            foreach (int p in rdc.PairID)
-            {
-                switch (sortby)
-                {
-                    case 7:
-                        rdc.SortVal = Util.SSqr(pdc[p].Attributes[0] + pdc[p].Attributes[1]);
-                        break;
-                    default:
-                        rdc.SortVal += Util.SSqr(pdc[p].Attributes[sortby]);
-                        break;
-                }
-            }
-            rdc.SortVal = Util.SSqrt(rdc.SortVal);
         }
     }
 
