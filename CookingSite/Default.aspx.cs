@@ -1,9 +1,11 @@
 ﻿using CookingSite.App_Code;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -61,20 +63,24 @@ namespace CookingSite
 
         protected void Button1_Click(object sender, EventArgs e)
         {
+            string[] durs = new string[] { "Dur7", "Dur14", "Dur43" };
             string[] filterNames = new string[] { "Strength", "Dexterity", "Endurance", "Speed", "Constitution", "Focus", "Perception" };
             List<string> colList = new List<string>();
-            //string sortBy = filterNames[sortby];
 
             string filter1 = "";
+            string filter2 = "";
             string sortBy1 = "";
+            string dur1 = durs[ratio];
             switch (sortby)
             {
                 case 7:
                     filter1 = $"Strength >= 0 AND Dexterity >= 0";
+                    filter2 = $"P.Strength >= 0 AND P.Dexterity >= 0";
                     sortBy1 = $"Strength DESC, Dexterity DESC";
                     break;
                 default:
                     filter1 = $"{filterNames[sortby]} >= 0";
+                    filter2 = $"P.{filterNames[sortby]} >= 0";
                     sortBy1 = $"{filterNames[sortby]} DESC";
                     break;
             }
@@ -99,7 +105,8 @@ namespace CookingSite
                     break;
             }
 
-            List<string> t1 = db.GetStringList($"SELECT TOP 50 Base + '|' + Additive FROM Pairs P LEFT OUTER JOIN StockView v1 ON v1.IngredientName=P.Base LEFT OUTER JOIN StockView v2 ON v2.IngredientName=P.Additive WHERE " + (invLimited ? $" v1.Quantity >= {minBase} AND v2.Quantity >= {minAdd}" : "1=1") + $" AND v1.GenDisable=0 AND v2.GenDisable=0 and {filter1} ORDER BY {sortBy1}");
+            List<string> t1 = db.GetStringList($"SELECT TOP 50 Base + '|' + Additive FROM Pairs P LEFT OUTER JOIN StockView v1 ON v1.IngredientName=P.Base LEFT OUTER JOIN StockView v2 ON v2.IngredientName=P.Additive WHERE v1.Quantity >= 30 AND v2.Quantity >= 5 AND v1.GenDisable=0 AND v2.GenDisable=0 and {filter2} ORDER BY {sortBy1}");
+            Dictionary<string, App_Code.Pair> pairCache = new Dictionary<string, App_Code.Pair>();
             if (t1 == null)
             {
                 gvRecipes.Visible = false;
@@ -107,114 +114,31 @@ namespace CookingSite
                 return;
             }
 
-            Recipe.pairCache = new Dictionary<string, App_Code.Pair>();
-            foreach (string s1 in t1)
+            PairData[] pairDatas = new PairData[t1.Count];
+            int[] inputSet = new int[pairDatas.Length];
+            for (int i = 0; i < t1.Count; i++)
             {
-                Recipe.pairCache.Add(s1, App_Code.Pair.FetchPair(s1));
-            }
-
-            List<Recipe> masterRecipeList = new List<Recipe>();
-            List<Recipe> recipeList = new List<Recipe>();
-            for (int i = 0; i <= level; i++)
-            {
-                Combinations<string> combinations = new Combinations<string>(t1, i + 1);
-                long comb = combinations.Count;
-
-                recipeList = new List<Recipe>();
-                foreach (IList<string> c in combinations)
+                string key = t1[i];
+                if (!pairCache.ContainsKey(key))
                 {
-                    Recipe recipe = new Recipe();
-                    bool valid = true;
-                    foreach (string s in c)
-                    {
-                        if (!recipe.Add(s, sortby))
-                        {
-                            valid = false;
-                            break;
-                        }
-                    }
-                    if (!valid)
-                        continue;
-                    if (recipe.isValid())
-                    {
-                        if (chkPosOnly.Checked)
-                        {
-                            if (recipe.isPositive(statFilters, boosted))
-                                recipeList.Add(recipe);
-                        }
-                        else
-                            recipeList.Add(recipe);
-                    }
+                    pairCache.Add(key, App_Code.Pair.FetchPair(key));
                 }
-                masterRecipeList.AddRange(recipeList);
+
+                pairDatas[i] = new PairData(pairCache[key], ratio);
+                inputSet[i] = i;
             }
 
+            ConcurrentBag<Recipe> candidates = new ConcurrentBag<Recipe>();
 
-            //List<App_Code.Pair> pairList = new List<App_Code.Pair>();
-            //foreach (string t in t1)
-            //    pairList.Add(App_Code.Pair.FetchPair(t));
-
-            //List<Recipe> masterRecipeList = new List<Recipe>();
-            //List<Recipe> recipeList = new List<Recipe>();
-
-            //foreach (string s in t1)
-            //{
-            //    Recipe r = new Recipe(s, sortby);
-            //    if (r.isValid() && r.isUnique())
-            //    {
-            //        if (chkPosOnly.Checked)
-            //        {
-            //            if (r.isPositive(statFilters, boosted))
-            //                recipeList.Add(r);
-            //        }
-            //        else
-            //            recipeList.Add(r);
-            //    }
-            //}
-
-            //masterRecipeList.AddRange(recipeList);
-
-            //if (level > 0)
-            //{
-            //    for (int i = 0; i < level; i++)
-            //    {
-            //        List<Recipe> newRecipeList = new List<Recipe>();
-            //        foreach (string s in t1)
-            //        {
-            //            foreach (Recipe recipe in recipeList)
-            //            {
-            //                if (!recipe.Contains(s))
-            //                {
-            //                    Recipe r = new Recipe(recipe, s, sortby);
-            //                    if (r.isValid() && r.isUnique())
-            //                    {
-            //                        if (chkPosOnly.Checked)
-            //                        {
-            //                            if (!newRecipeList.Contains(r) && r.isPositive(statFilters, boosted))
-            //                            {
-            //                                //bool b = r.isPositive(statFilters, boosted);
-            //                                newRecipeList.Add(r);
-            //                            }
-            //                        }
-            //                        else
-            //                            newRecipeList.Add(r);
-            //                    }
-            //                }
-            //            }
-            //        }
-
-            //        recipeList = new List<Recipe>(newRecipeList);
-
-            //        recipeList.Sort((a, b) => a.SorterAttr.CompareTo(b.SorterAttr));
-            //        recipeList.Reverse();
-            //        recipeList = recipeList.Take(200).ToList();
-            //        masterRecipeList.AddRange(recipeList);
-            //    }
-            //}
-
-            masterRecipeList.Sort((a, b) => a.SorterAttr.CompareTo(b.SorterAttr));
-            masterRecipeList.Reverse();
-            masterRecipeList = masterRecipeList.Take(200).ToList();
+            for (int i = 0; i < level + 1; i++)
+            {
+                Combinations<int> combos = new Combinations<int>(inputSet, i + 1);
+                Parallel.ForEach(combos, c => ValidateRecipe(candidates, pairDatas, sortby, statFilters, boosted, c));
+            }
+            List<Recipe> cand = new List<Recipe>(candidates);
+            cand.Sort((a, b) => a.SortVal.CompareTo(b.SortVal));
+            cand.Reverse();
+            cand = cand.Take(200).ToList();
 
             DataTable dt = new DataTable();
             dt.Columns.Add("Recipe", typeof(string));
@@ -231,22 +155,25 @@ namespace CookingSite
 
             List<string> UpdatePairs = new List<string>();
 
-            foreach (Recipe r in masterRecipeList)
+            foreach (Recipe r in cand)
             {
+                r.Prep(pairDatas, ratio);
                 DataRow row = dt.NewRow();
-                row["recipe"] = r.ToWikiString(cboRatio.Text);
-                float[] results = r.Attributes(ratio);
+
+                row["recipe"] = r.ToString();
+                float[] results = r.Attributes;
                 for (int j = 0; j < 8; j++)
                     row[j + 2] = (int)results[j];
 
-                row["cost"] = r.Cost(ratio);
+                row["cost"] = r.cost;
                 row["time"] = new TimeSpan(0, 0, (int)results[7]);
                 dt.Rows.Add(row);
 
-                foreach (App_Code.Pair p in r.pairs.Values)
+                foreach (int pi in r.PairID)
                 {
-                    if (!UpdatePairs.Contains(p.Key))
-                        UpdatePairs.Add(p.Key);
+                    PairData pdc = pairDatas[pi];
+                    if (!UpdatePairs.Contains(pdc.pair.Key))
+                        UpdatePairs.Add(pdc.pair.Key);
                 }
             }
 
@@ -278,7 +205,7 @@ namespace CookingSite
                
                 foreach (string s in UpdatePairs)
                 {
-                    App_Code.Pair p = Recipe.pairCache[s];
+                    App_Code.Pair p = pairCache[s];
                     TimeSpan elapsed = DateTime.Now - p.LastUpdated;
                     if (elapsed > new TimeSpan(5, 0, 0, 0))
                     {
@@ -396,6 +323,51 @@ namespace CookingSite
                 gvUpdatePairs.DataSource = dt2;
                 gvUpdatePairs.DataBind();
             }
+        }
+
+        private void ValidateRecipe(ConcurrentBag<Recipe> candidates, PairData[] pairDatas, int sortby, bool[] attrFilters, bool boosted, IList<int> c)
+        {
+            Recipe rdc = new Recipe();
+            for (int j = 0; j < c.Count; j++)
+                rdc.PairID.Add(c[j]);
+            CalcStats(rdc, pairDatas, sortby);
+
+            if (!rdc.isPositive(attrFilters, boosted))
+                return;
+            if (!rdc.isUnique(pairDatas))
+                return;
+            if (!rdc.isValid(pairDatas))
+                return;
+
+            candidates.Add(rdc);
+        }
+
+        private void CalcStats(Recipe rdc, PairData[] pdc, int sortby)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                float f = 0.0f;
+                foreach (int p in rdc.PairID)
+                {
+
+                    f += Util.SSqr(pdc[p].Attributes[i]);
+                }
+                rdc.Attributes[i] = Util.SSqrt(f);
+            }
+            rdc.SortVal = 0.0f;
+            foreach (int p in rdc.PairID)
+            {
+                switch (sortby)
+                {
+                    case 7:
+                        rdc.SortVal = Util.SSqr(pdc[p].Attributes[0] + pdc[p].Attributes[1]);
+                        break;
+                    default:
+                        rdc.SortVal += Util.SSqr(pdc[p].Attributes[sortby]);
+                        break;
+                }
+            }
+            rdc.SortVal = Util.SSqrt(rdc.SortVal);
         }
     }
 

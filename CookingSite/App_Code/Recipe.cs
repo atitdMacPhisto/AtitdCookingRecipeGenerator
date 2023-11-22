@@ -1,267 +1,111 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Text;
 using System.Web;
 
 namespace CookingSite.App_Code
 {
-    public class Recipe : IEquatable<Recipe>
+    public class Recipe
     {
-        public static Dictionary<string, Pair> pairCache = new Dictionary<string, Pair>();
+        public List<int> PairID = new List<int>();
+        public float[] Attributes = new float[8];
+        public float SortVal = 0.0f;
+        public int cost;
+        string recipe;
 
-        public SortedList<string, Pair> pairs = new SortedList<string, Pair>();
-        List<string> ingredients = new List<string>();
-        public float sortedAttr = 0;
-
-        public float SorterAttr => Util.SSqrt(sortedAttr);
-
-        public Recipe()
+        public bool isPositive(bool[] desired, bool boosted)
         {
-        }
-
-        public Recipe(string p, int sortAttr)
-        {
-            Pair pair = null;
-            if (pairCache.ContainsKey(p))
-                pair = pairCache[p];
-            else
-                pair = Pair.FetchPair(p);
-            pairs.Add(pair.Key, pair);
-            ingredients.Add(pair.Base.Name);
-            ingredients.Add(pair.Additive.Name);
-            sortedAttr = Util.SSqr(pair.Attribute(sortAttr));
-        }
-
-        public Recipe(Recipe r, string p, int sortAttr)
-        {
-            Pair pair = null;
-            if (pairCache.ContainsKey(p))
-                pair = pairCache[p];
-            else
-                pair = Pair.FetchPair(p);
-            foreach (KeyValuePair<string, Pair> kvp in r.pairs)
-                pairs.Add(kvp.Key, kvp.Value);
-            ingredients.AddRange(r.ingredients);
-            sortedAttr = r.sortedAttr;
-            pairs.Add(pair.Key, pair);
-            ingredients.Add(pair.Base.Name);
-            ingredients.Add(pair.Additive.Name);
-            sortedAttr += CalcSortVal(pair, sortAttr);
-        }
-
-        public bool Add(string p, int sortAttr)
-        {
-            if (Contains(p))
-                return false;
-            Pair pair = null;
-            if (pairCache.ContainsKey(p))
-                pair = pairCache[p];
-            else
-                pair = Pair.FetchPair(p);
-            if (ingredients.Contains(pair.Base.Name) || ingredients.Contains(pair.Additive.Name))
-                return false;
-            pairs.Add(pair.Key, pair);
-            ingredients.Add(pair.Base.Name);
-            ingredients.Add(pair.Additive.Name);
-            sortedAttr = CalcSortVal(pair, sortAttr);
+            for (int i = 0; i < 7; i++)
+            {
+                if (desired[i])
+                {
+                    float s = Attributes[i];
+                    if ((boosted && s <= 0) || s < 0)
+                        return false;
+                }
+            }
             return true;
         }
 
-        private float CalcSortVal(Pair pair, int sortAttr)
+        public bool isValid(PairData[] pdc)
         {
-            switch (sortAttr)
+            if (PairID.Count == 1)
+                return true;
+
+            for (int x = 0; x < PairID.Count; x++)
             {
-                case 7:
-                    return Util.SSqr((pair.Attribute(0) + pair.Attribute(1))/2);
-                default:
-                    return Util.SSqr(pair.Attribute(sortAttr));
+                float min = 3000;
+                for (int y = 0; y < PairID.Count; y++)
+                    min = Math.Min(min, Util.Sqrt(Util.Sqr(pdc[PairID[y]].X1, pdc[PairID[x]].X2) + Util.Sqr(pdc[PairID[y]].Y1, pdc[PairID[x]].Y2)));
+                if (min != Util.Sqrt(Util.Sqr(pdc[PairID[x]].X1, pdc[PairID[x]].X2) + Util.Sqr(pdc[PairID[x]].Y1, pdc[PairID[x]].Y2)))
+                    return false;
             }
+
+            for (int y = 0; y < PairID.Count; y++)
+            {
+                float min = 3000;
+                for (int x = 0; x < PairID.Count; x++)
+                    min = Math.Min(min, Util.Sqrt(Util.Sqr(pdc[PairID[y]].X1, pdc[PairID[x]].X2) + Util.Sqr(pdc[PairID[y]].Y1, pdc[PairID[x]].Y2)));
+                if (min != Util.Sqrt(Util.Sqr(pdc[PairID[y]].X1, pdc[PairID[y]].X2) + Util.Sqr(pdc[PairID[y]].Y1, pdc[PairID[y]].Y2)))
+                    return false;
+            }
+
+            return true;
         }
 
-        public float Attribute(int index)
+        public bool isUnique(PairData[] pdc)
         {
-            return (float)Math.Sqrt(pairs.Values.Sum(s => (float)Math.Pow(s.Attribute(index), 2)));
+            if (PairID.Count == 1)
+                return true;
+
+            List<int> ids = new List<int>();
+            foreach (int id in PairID)
+            {
+                ids.Add(pdc[id].ID1);
+                ids.Add(pdc[id].ID2);
+            }
+
+            return ids.Count == ids.Distinct().Count();
         }
 
-        public bool Contains(string p)
+        public void Prep(PairData[] pdc, int ratio)
         {
-            return pairs.Where(t => t.Key == p).Count() > 0;
-        }
+            int b = 0;
+            int a = 0;
+            cost = 0;
 
-        public bool Equals(Recipe other)
-        {
-            return ToString().Equals(other.ToString());
+            switch (ratio)
+            {
+                case 0:
+                    b = 6;
+                    a = 1;
+                    break;
+                case 1:
+                    b = 13;
+                    a = 1;
+                    break;
+                case 2:
+                    b = 4;
+                    a = 3;
+                    break;
+            }
+
+            List<string> ingredients = new List<string>();
+            foreach (int id in PairID)
+            {
+                Pair p = pdc[id].pair;
+                ingredients.Add($"{b} {p.Base.Name}");
+                ingredients.Add($"{a} {p.Additive.Name}");
+                cost += b * p.Base.Cost;
+                cost += a * p.Additive.Cost;
+            }
+
+            recipe = string.Join(" ", ingredients);
         }
 
         public override string ToString()
         {
-            return string.Join(",", pairs.Keys);
-        }
-
-        public string ToWikiString(string ratio)
-        {
-            string[] ratioParts = ratio.Split(':');
-            int baseQty = int.Parse(ratioParts[0]);
-            int addQty = int.Parse(ratioParts[1]);
-            List<string> pairlist  = new List<string>();
-            foreach (Pair p in pairs.Values)
-            {
-                pairlist.Add($"{baseQty} {p.Base.Name}. {addQty} {p.Additive.Name}.");
-            }
-            return string.Join(" ", pairlist);
-        }
-
-        /// <summary>
-        /// Checks recipe where ingredients in a pair are closer to each other than to other ingredients of recipe
-        /// </summary>
-        /// <returns></returns>
-        public bool isValid()
-        {
-            if (ingredients.Distinct().Count() != pairs.Count * 2)
-                return false;
-
-            for (int x = 0; x < pairs.Count; x++)
-            {
-                float min = 3000;
-                for (int y = 0; y < pairs.Count; y++)
-                    min = Math.Min(min, Util.Sqrt(Util.Sqr(pairs.Values[y].X1, pairs.Values[x].X2) + Util.Sqr(pairs.Values[y].Y1, pairs.Values[x].Y2)));
-                if (min != Util.Sqrt(Util.Sqr(pairs.Values[x].X1, pairs.Values[x].X2) + Util.Sqr(pairs.Values[x].Y1, pairs.Values[x].Y2)))
-                    return false;
-            }
-
-            for (int y = 0; y < pairs.Count; y++)
-            {
-                float min = 3000;
-                for (int x = 0; x < pairs.Count; x++)
-                    min = Math.Min(min, Util.Sqrt(Util.Sqr(pairs.Values[y].X1, pairs.Values[x].X2) + Util.Sqr(pairs.Values[y].Y1, pairs.Values[x].Y2)));
-                if (min != Util.Sqrt(Util.Sqr(pairs.Values[y].X1, pairs.Values[y].X2) + Util.Sqr(pairs.Values[y].Y1, pairs.Values[y].Y2)))
-                    return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Verify desired stats are positive, or greater than 0 if also require boosted attributes
-        /// </summary>
-        /// <param name="stats">Desired Stats 0 or greater</param>
-        /// <param name="boosted">Desired Stats should be greater than 0</param>
-        /// <returns></returns>
-        public bool isPositive(bool[] stats, bool boosted)
-        {
-            bool ret = true;
-
-            for (int i = 0; i < stats.Length; i++)
-            {
-                if (stats[i])
-                {
-                    float s = 0;
-                    foreach (Pair p in pairs.Values)
-                    {
-                        s += Util.SSqr(p.Attribute(i));
-                    }
-
-                    s = Util.SSqrt(s);
-
-                    if (boosted)
-                    {
-                        if (s <= 0)
-                            return false;
-                    }
-                    else
-                    {
-                        if (s < 0)
-                            return false;
-                    }
-                }
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Recipe must have all unique ingredients, no replication
-        /// </summary>
-        /// <returns></returns>
-        public bool isUnique()
-        {
-            bool ret = true;
-
-            List<string> ing = new List<string>();
-            foreach (Pair pair in pairs.Values)
-            {
-                if (ing.Contains(pair.Base.Name))
-                    return false;
-                ing.Add(pair.Base.Name);
-                if (ing.Contains(pair.Additive.Name))
-                    return false;
-                ing.Add(pair.Additive.Name);
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Calculate overall stats and duration for entire recipe.
-        /// Square root of sum of squares, retaining signs.
-        /// </summary>
-        /// <param name="ratio">The base:additive rato to use in calculations. 6:1, 13:1, 4:3</param>
-        /// <returns></returns>
-        public float[] Attributes(int ratio)
-        {
-            float[] att = new float[8];
-            foreach (Pair p in pairs.Values)
-            {
-                int[] a = p.AttributeArray;
-                for (int i = 0; i < 7; i++)
-                    att[i] += Util.SSqr(a[i]);
-                att[7] += Util.SSqr(a[7 + ratio]);
-            }
-            for (int i = 0; i < 8; i++)
-                att[i] = Util.SSqrt(att[i]);
-            att[7] *= 1.3f;
-
-            return att;
-        }
-
-        /// <summary>
-        /// Calculates the cost of the recipe
-        /// </summary>
-        /// <param name="ratio">The base:additive rato to use in calculations. 6:1, 13:1, 4:3</param>
-        /// <returns></returns>
-        public int Cost(int ratio)
-        {
-            int cost = 0;
-            foreach (Pair p in pairs.Values)
-            {
-                switch (ratio)
-                {
-                    case 0:
-                        cost += (p.Base.Cost * 6) + p.Additive.Cost;
-                        break;
-                    case 1:
-                        cost += (p.Base.Cost * 13) + p.Additive.Cost;
-                        break;
-                    case 2:
-                        cost += (p.Base.Cost * 4) + (p.Additive.Cost * 3);
-                        break;
-                }
-            }
-            return cost;
-        }
-
-        public DataRow MakeDataRow(DataTable dt, int ratio)
-        {
-            float[] results = Attributes(ratio);
-            DataRow dr = dt.NewRow();
-            dr["Recipe"] = ToString();
-            for (int i = 0; i < 8; i++)
-                dr[i + 1] = (int)results[i];
-            dr["Cost"] = Cost(ratio);
-            dr["Time"] = new TimeSpan(0, 0, (int)results[7]);
-            return dr;
+            return recipe;
         }
     }
 }

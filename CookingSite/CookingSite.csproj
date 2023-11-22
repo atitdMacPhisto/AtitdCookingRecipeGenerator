@@ -192,6 +192,7 @@
     <Compile Include="App_Code\Ingredient.cs" />
     <Compile Include="App_Code\db.cs" />
     <Compile Include="App_Code\Pair.cs" />
+    <Compile Include="App_Code\PairData.cs" />
     <Compile Include="App_Code\Permutations.cs" />
     <Compile Include="App_Code\Recipe.cs" />
     <Compile Include="App_Code\SmallPrimeUtility.cs" />
